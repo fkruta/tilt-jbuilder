@@ -45,15 +45,10 @@ module Tilt
   #     json.extract! @person, :name, :age
   #   end
   def cache!(key=nil, options={})
-    if ActionController::Base.perform_caching
       value = ::Rails.cache.fetch(_cache_key(key, options), options) do
         _scope { yield self }
       end
-
       merge! value
-    else
-      yield
-    end
   end
   
   def _cache_key(key, options)
