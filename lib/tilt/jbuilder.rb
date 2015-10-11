@@ -36,10 +36,45 @@ module Tilt
       end
     end
 
-    # for now caching is not supported, but at least we can transparently ignore it
-    def cache!(key=nil, options={}, &block)
+     # Caches the json constructed within the block passed. Has the same signature as the `cache` helper
+  # method in `ActionView::Helpers::CacheHelper` and so can be used in the same way.
+  #
+  # Example:
+  #
+  #   json.cache! ['v1', @person], expires_in: 10.minutes do
+  #     json.extract! @person, :name, :age
+  #   end
+  def cache!(key=nil, options={})
+    if ActionController::Base.perform_caching
+      value = ::Rails.cache.fetch(_cache_key(key, options), options) do
+        _scope { yield self }
+      end
+
+      merge! value
+    else
       yield
     end
+  end
+  
+  def _cache_key(key, options)
+    key = _fragment_name_with_digest(key, options)
+    key = url_for(key).split('://', 2).last if ::Hash === key
+    ::ActiveSupport::Cache.expand_cache_key(key, :jbuilder)
+  end
+
+  def _fragment_name_with_digest(key, options)
+   # if @context.respond_to?(:cache_fragment_name)
+      # Current compatibility, fragment_name_with_digest is private again and cache_fragment_name
+      # should be used instead.
+    #  @context.cache_fragment_name(key, options)
+    #elsif @context.respond_to?(:fragment_name_with_digest)
+      # Backwards compatibility for period of time when fragment_name_with_digest was made public.
+     # @context.fragment_name_with_digest(key)
+    #else
+      key
+    #end
+  end
+
 
     private
     def fetch_partial_path(file, view_path)
